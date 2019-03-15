@@ -1,0 +1,141 @@
+#include <cmath>
+#include <iterator>
+#include <iostream>
+#include <vector>
+
+#include "../cs225/HSLAPixel.h"
+#include "../cs225/PNG.h"
+#include "../Point.h"
+
+#include "ImageTraversal.h"
+
+/**
+ * Calculates a metric for the difference between two pixels, used to
+ * calculate if a pixel is within a tolerance.
+ *
+ * @param p1 First pixel
+ * @param p2 Second pixel
+ */
+/*bool arrck(int h,int w){
+  int arr[][];
+  for(int i = 0; i<h;i++){
+    for(int j=0;j<w;j++){
+      arr[i][j] = 0;
+    }
+  }
+}*/
+
+
+
+double ImageTraversal::calculateDelta(const HSLAPixel & p1, const HSLAPixel & p2) {
+  double h = fabs(p1.h - p2.h);
+  double s = p1.s - p2.s;
+  double l = p1.l - p2.l;
+
+  // Handle the case where we found the bigger angle between two hues:
+  if (h > 180) { h = 360 - h; }
+  h /= 360;
+
+  return sqrt( (h*h) + (s*s) + (l*l) );
+}
+
+/**
+ * Default iterator constructor.
+ */
+ImageTraversal::Iterator::Iterator(){
+
+}
+
+ImageTraversal::Iterator::Iterator(const PNG & png, const Point & start, double tolerance, ImageTraversal * ptr) {
+  ppng = png;
+  sstart = start;
+  ttolerance =tolerance;
+  mit = ptr;
+  //cp = ptr->peek();
+  w = png.width();
+  h = png.height();
+  //int arr[][];
+  std::vector<bool> v(w*h);
+  for (int i = 0;i<w;i++){
+    std::vector<bool> v;
+    vc.push_back(v);
+    for(int j=0;j<h;j++){
+      vc[i].push_back(false);
+    }
+  }
+  vc[start.x][start.y]=true;
+
+  /** @todo [Part 1] */
+}
+
+bool ImageTraversal::Iterator::ack(int a, int b){
+  return !(vc[a][b]);
+}
+
+/*void ImageTraversal::Iterator::det(int a, int b){
+  if(ack(a,b)){
+    vc[a][b]=true;
+  }
+}*/
+/**
+ * Iterator increment opreator.
+ *
+ * Advances the traversal of the image.
+ */
+ImageTraversal::Iterator & ImageTraversal::Iterator::operator++() {
+  /** @todo [Part 1] */
+
+  HSLAPixel *p = ppng.getPixel(sstart.x,sstart.y);
+    cp = mit->pop();
+    int mx = cp.x;
+    int my = cp.y;
+    vc[mx][my]=1;
+  if((mx+1)<w && calculateDelta(*p,*ppng.getPixel(mx+1,my))<ttolerance){
+    mit->add(Point(mx+1,my));
+    //vc[mx+1][my] = true;
+  }
+  if((my+1)<h && calculateDelta(*p,*ppng.getPixel(mx,my+1))<ttolerance){
+    mit->add(Point(mx,my+1));
+    //vc[mx][my+1] = true;
+  }
+  if((mx-1)>=0 && calculateDelta(*p,*ppng.getPixel(mx-1,my))<ttolerance){
+    mit->add(Point(mx-1,my));
+    //vc[mx-1][my] = true;
+  }
+  if((my-1)>=0 && calculateDelta(*p,*ppng.getPixel(mx,my-1))<ttolerance){
+    mit->add(Point(mx,my-1));
+    //vc[mx][my-1] = true;
+  }
+
+Point pp = mit->peek();
+while(!mit->empty() && !ack(pp.x,pp.y)){
+  mit->pop();
+  if(!mit->empty()){
+    pp = mit->peek();
+  }else{
+    break;
+  }
+}
+  return *this;
+
+}
+
+/**
+ * Iterator accessor opreator.
+ *
+ * Accesses the current Point in the ImageTraversal.
+ */
+Point ImageTraversal::Iterator::operator*() {
+  /** @todo [Part 1] */
+  return mit->peek();
+}
+
+/**
+ * Iterator inequality operator.
+ *
+ * Determines if two iterators are not equal.
+ */
+bool ImageTraversal::Iterator::operator!=(const ImageTraversal::Iterator &other) {
+  /** @todo [Part 1] */
+  return(!(this->mit->empty()));
+}

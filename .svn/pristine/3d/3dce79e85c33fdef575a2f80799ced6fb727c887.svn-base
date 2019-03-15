@@ -1,0 +1,241 @@
+#include "StickerSheet.h"
+#include "Image.h"
+#include <cstdlib>
+#include <cmath>
+#include <iostream>
+#include "cs225/PNG.h"
+#include "cs225/HSLAPixel.h"
+using namespace cs225;
+using namespace std;
+
+StickerSheet::StickerSheet(const Image &picture, unsigned max){
+ P_ = picture;
+ A_ = new Image[max];
+ x_ = new unsigned int[max];
+ y_ = new unsigned int[max];
+ vc_ = new unsigned int[max];
+ index_ = 0;
+ m_ = max-1;
+ for(unsigned int i = 0;i<m_;i++){
+   vc_[i] = 0;//invalid right now
+ }
+}
+
+StickerSheet::~StickerSheet(){
+  delete [] A_;
+  delete [] x_;
+  delete [] y_;
+  delete [] vc_;
+  A_ = NULL;
+  x_ = NULL;
+  y_ = NULL;
+  vc_ = NULL;
+}
+
+StickerSheet::StickerSheet(const StickerSheet &other){
+  P_ = other.P_;
+  m_ = other.m_;
+  index_ = other.index_;
+  A_ = new Image[m_];
+  x_ = new unsigned int[m_];
+  y_ = new unsigned int[m_];
+  vc_ = new unsigned int[m_];
+  for (unsigned int i = 0; i<m_; i++){
+    A_[i] = other.A_[i];
+    x_[i] = other.x_[i];
+    y_[i] = other.y_[i];
+    vc_[i] = other.vc_[i];
+  }
+}
+
+const StickerSheet& StickerSheet::operator=	(	const StickerSheet & 	other	){
+  this->P_ = other.P_;
+  this->m_ = other.m_;
+  this->index_ = other.index_;
+  this->A_ = new Image[m_];
+  this->x_ = new unsigned int[m_];
+  this->y_ = new unsigned int[m_];
+  this->vc_ = new unsigned int[m_];
+  for(unsigned int i = 0; i< m_;i++){
+    A_[i] = other.A_[i];
+    x_[i] = other.x_[i];
+    y_[i] = other.y_[i];
+    vc_[i] = other.vc_[i];
+  }
+  return *this;
+}
+
+/*void StickerSheet::changeMaxStickers	(	unsigned 	max	)	{
+  Image *nA = new Image[m_];
+  unsigned int *nx = new unsigned int[m_];
+  unsigned int *ny = new unsigned int[m_];
+  unsigned int *nvc = new unsigned int[m_];
+  for(unsigned int i=0; i<max; i++){
+    nA[i] = A_[i];
+    nx[i] = x_[i];
+    ny[i] = y_[i];
+    nvc[i] = vc_[i];
+  }
+  delete []A_;
+  delete []x_;
+  delete []y_;
+  delete []vc_;
+  A_ = NULL;
+  x_ = NULL;
+  y_ = NULL;
+  vc_ = NULL;
+  A_ = new Image[max];
+  x_ = new unsigned int[max];
+  y_ = new unsigned int[max];
+  vc_ = new unsigned int[max];
+  unsigned int c;
+  if (max<m_){
+    for(unsigned int i=0; i<max; i++){
+      A_[i] = nA[i];
+      x_[i] = nx[i];
+      y_[i] = ny[i];
+      vc_[i] = nvc[i];
+    }
+    c = max;
+  }else{
+    for(unsigned int i=0; i<m_; i++){
+      A_[i] = nA[i];
+      x_[i] = nx[i];
+      y_[i] = ny[i];
+      vc_[i] = nvc[i];
+    }
+    c = m_;
+  }
+  delete []nA;
+  delete []nx;
+  delete []ny;
+  delete []nvc;
+  nA = NULL;
+  nx = NULL;
+  ny = NULL;
+  nvc = NULL;
+  index_ = c;
+}
+*/
+
+int StickerSheet::addSticker(Image &sticker, unsigned x, unsigned y){
+  if (index_ >= m_){
+    return -1;
+  }
+  A_[index_] = sticker;
+  x_[index_] = x;
+  y_[index_] = y;
+  vc_[index_] = 1;
+  index_ = index_+1;
+  unsigned int ret = index_ - 1;
+  return ret;
+
+}
+
+bool StickerSheet::translate	(	unsigned 	index, unsigned 	x, unsigned 	y){
+  if (vc_[index] ==0){
+    return false;
+  }
+  x_[index] = x;
+  y_[index] = y;
+  return true;
+}
+
+void StickerSheet::removeSticker	(	unsigned 	index	)	{
+  for(unsigned int i = index; i < m_; i++){
+    A_[i] = A_[i+1];
+    x_[i] = x_[i+1];
+    y_[i] = y_[i+1];
+    vc_[i] = vc_[i+1];
+  }
+  vc_[m_] = 0;
+  index_ = index_ -1;
+}
+
+
+Image* StickerSheet::getSticker	(	unsigned 	index	)	const{
+  if (vc_[index] ==0){
+    return NULL;
+  }
+ Image *r = &A_[index];
+ return r;
+}
+
+
+Image StickerSheet::render()const{
+  PNG *ret = new PNG();
+	Image *B = new Image();
+	Image C = P_;
+	unsigned int width = P_.width();
+	unsigned int height = P_.height();
+	ret->resize(width, height);
+	B->resize(width, height);
+	for (unsigned int i = 0; i < width; i++)
+	{
+		for (unsigned int j = 0; j < height; j++)
+		{
+			HSLAPixel *base = C.getPixel(i, j);
+			HSLAPixel *draw = ret->getPixel(i, j);
+			draw->l = base->l;
+			draw->h = base->h;
+			draw->s = base->s;
+			draw->a = base->a;
+		}
+	}
+	unsigned int counter = 0;
+	while (vc_[counter] == 1)
+	{
+		Image temp = A_[counter];
+		int stx = x_[counter];
+		int sty = y_[counter];
+		unsigned int nw = temp.width();
+		unsigned int nh = temp.height();
+		int flag = 0;
+		PNG *ns = new PNG();
+    for (unsigned int i = stx; i < stx + nw; i++)
+    		{
+    			for (unsigned int j = sty; j < sty + nh; j++)
+    			{
+    				HSLAPixel *layer = temp.getPixel(i-stx, j-sty);
+    				HSLAPixel *draw = ret->getPixel(i, j);
+    				if (layer->a == 0)
+    					continue;
+    				draw->l = layer->l;
+    				draw->h = layer->h;
+    				draw->s = layer->s;
+    				draw->a = layer->a;
+    			}
+    		}
+    		counter++;
+    	}
+    	B->resize(ret->width(), ret->height());
+    	for (unsigned int i = 0; i < ret->width(); i++)
+    	{
+    		for (unsigned int j = 0; j < ret->height(); j++)
+    		{
+    			HSLAPixel *base = ret->getPixel(i, j);
+    			HSLAPixel *draw = B->getPixel(i, j);
+    			draw->l = base->l;
+    			draw->h = base->h;
+    			draw->s = base->s;
+    			draw->a = base->a;
+    		}
+    	}
+    	C.resize(ret->width(), ret->height());
+    	for (unsigned int i = 0; i < ret->width(); i++)
+    	{
+    		for (unsigned int j = 0; j < ret->height(); j++)
+    		{
+    			HSLAPixel *base = ret->getPixel(i, j);
+    			HSLAPixel *draw = C.getPixel(i, j);
+    			draw->l = base->l;
+    			draw->h = base->h;
+    			draw->s = base->s;
+    			draw->a = base->a;
+    		}
+    	}
+    	delete ret;
+    	ret = NULL;
+    	delete B;
+    	return C;
+}
